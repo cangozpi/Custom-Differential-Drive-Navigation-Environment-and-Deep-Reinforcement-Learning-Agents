@@ -1,0 +1,17 @@
+verbose: True # Whether to print info.
+log_full_detail: False
+
+# ========== HYPERPARAMTERS VPG: ============= 
+mode: "train" # ['train', 'test'] # TODO: set from config
+total_episodes: 2000 # total number of episodes to train
+num_episodes_before_each_update: 20 # number of episodes collected before updating the model at every time.
+train_v_iters: 80 # Number of gradient descent steps to take on value function per epoch.
+max_episode_length: 200 # maximum iteration length of an episode.
+policy_hidden_dims: [64, 64] # holds dimensions of the hidden layers excluding the input layer and the input and the output dimensions for the actor network of ddpg agent.
+valueBaseline_hidden_dims: [64, 64] # holds dimensions of the hidden layers excluding the input layer and the input and the output dimensions for the critic network of ddpg agent.
+policy_lr: 3e-4 # learning rate for the Actor Network20
+valueBaseline_lr: 1e-3 # learning rate for the Critic Network
+gamma: 0.9999 # next state discount rate
+seed: 42 # used to set seed for reproducibility
+save_every: 500 # specifies after every how many updates to the model the agent model is saved
+# ======================================= 
