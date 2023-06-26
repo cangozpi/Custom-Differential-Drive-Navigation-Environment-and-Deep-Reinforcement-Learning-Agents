@@ -102,6 +102,12 @@ class DDPG_Agent(): #TODO: make this extend a baseclass (ABC) of Agent and call 
 
         self.critic.zero_grad()
         critic_loss.backward()
+
+        #Gradient Value Clipping
+        # torch.nn.utils.clip_grad_value_(self.critic.parameters(), clip_value=1.0)
+        # Gradient Norm Clipping
+        nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=2.0, norm_type=2)
+
         self.optim_critic.step()
 
         # Log Critic's stats to tensorboard
@@ -109,6 +115,7 @@ class DDPG_Agent(): #TODO: make this extend a baseclass (ABC) of Agent and call 
         log_training_losses(critic_loss.cpu().detach(), self.logger, self._n_updates, "Critic")
 
         # ------------------------------------------- Delayed Policy Update:
+        actor_loss = None
         if self._n_updates % self.policy_update_delay == 0:
             # Freeze Q-networks so you don't waste computational effort computing gradients for them during the policy learning step.
             for critic_p in self.critic.parameters():
@@ -119,6 +126,12 @@ class DDPG_Agent(): #TODO: make this extend a baseclass (ABC) of Agent and call 
 
             self.actor.zero_grad()
             actor_loss.backward()
+
+            #Gradient Value Clipping
+            # torch.nn.utils.clip_grad_value_(self.actor.parameters(), clip_value=1.0)
+            # Gradient Norm Clipping
+            nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=2.0, norm_type=2)
+
             self.optim_actor.step()
 
             # Log Actor's stats to tensorboard
@@ -139,12 +152,14 @@ class DDPG_Agent(): #TODO: make this extend a baseclass (ABC) of Agent and call 
                 target_param.data.copy_(
                     (target_param.data * self.tau) + (param.data * (1.0 - self.tau)) 
                         )
+
+            actor_loss = actor_loss.cpu().detach()
         
         self._n_updates += 1
         
 
         
-        return critic_loss.cpu().detach(), actor_loss.cpu().detach()
+        return critic_loss.cpu().detach(), actor_loss
 
 
     def train_mode(self):
@@ -238,10 +253,11 @@ class Actor(nn.Module):
         for i, hidden_dim in enumerate(hidden_dims):
             # if i == 0:
             #     layers.append(torch.nn.Flatten())
+            layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
             layers.append(torch.nn.Linear(prev_dim, hidden_dim))
             layers.append(torch.nn.ReLU())
             prev_dim = hidden_dim
-        # layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
+        layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
         layers.append(torch.nn.Linear(prev_dim, action_dim))
         layers.append(torch.nn.Tanh()) 
                 
@@ -282,9 +298,11 @@ class Critic(nn.Module):
         for i, hidden_dim in enumerate(hidden_dims):
             # if i == 0:
             #     layers.append(torch.nn.Flatten())
+            layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
             layers.append(torch.nn.Linear(prev_dim, hidden_dim))
             layers.append(torch.nn.ReLU())
             prev_dim = hidden_dim
+        layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
         layers.append(torch.nn.Linear(prev_dim, self.output_dim))
         # layers.append(torch.nn.ReLU())
                 
