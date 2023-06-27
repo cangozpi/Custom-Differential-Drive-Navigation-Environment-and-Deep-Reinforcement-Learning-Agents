@@ -27,6 +27,8 @@ def main():
     config = read_yaml_config(config_path)
     env.config = config
     env.max_episode_length = config['max_episode_length']
+    global plot_predQ_vs_return
+    plot_predQ_vs_return = False
     global verbose
     verbose = config['verbose']
     # ---
@@ -36,6 +38,19 @@ def main():
         train_agent(env)
     elif mode == "test": # test pre-trained agent
         test_agent(env)
+    elif mode == "hyperparameter_search": # perform hyperparameter search
+        hidden_dims = [[8, 16], [400, 300]]
+        learning_rates = [1e-3, 5e-5]
+        act_noises = [0.0, 0.3, 0.5]
+        for h_dim in hidden_dims:
+            for lr in learning_rates:
+                for act_noise in act_noises:
+                    env.config['actor_hidden_dims'] = h_dim
+                    env.config['critic_hidden_dims'] = h_dim
+                    env.config['actor_lr'] = lr
+                    env.config['critic_lr'] = lr
+                    env.config['act_noise'] = act_noise
+                    train_agent(env)
     else:
         raise Exception('\'mode\' must be either [\'train\', \'test\']')
 
@@ -143,7 +158,8 @@ def train_agent(env):
             replay_buffer.commit_append()
             replay_buffer.clear_staged_for_append()
 
-            debug_logger.plot_predQ_vs_return() # plot 
+            if plot_predQ_vs_return:
+                debug_logger.plot_predQ_vs_return() # plot 
             debug_logger.clear_recorded_rewards() # clear recorded values for a new episode
 
             # Reset env

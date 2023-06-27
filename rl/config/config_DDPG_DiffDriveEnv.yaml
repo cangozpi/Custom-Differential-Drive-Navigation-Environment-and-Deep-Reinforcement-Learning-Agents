@@ -9,9 +9,10 @@ step_duration: 1_000_000_000 # specifies the duration of each step() with respec
 real_time: False # if True than simulation is run in real time
 
 # ========== HYPERPARAMTERS DDPG: ============= 
-mode: "train" # ['train', 'test'] # TODO: set from config
-# mode: "test" # ['train', 'test'] # TODO: set from config
-total_episodes: 1000 # total number of episodes to train
+mode: "hyperparameter_search" # ['train', 'test', 'hyperparameter_search'] # TODO: set from config
+# mode: "train" # ['train', 'test', 'hyperparameter_search'] # TODO: set from config
+# mode: "test" # ['train', 'test', 'hyperparameter_search'] # TODO: set from config
+total_episodes: 100 # total number of episodes to train
 max_episode_length: 200 # maximum iteration length of an episode.
 warmup_steps: 0 # number of steps to take random actions before using the agents policy
 update_every: 200 # update model after every update_every steps taken.
