@@ -65,7 +65,29 @@ def train_agent(env):
     agent.train_mode() # TODO: handle .eval() case for testing the model too.
     replay_buffer = ReplayBuffer(env.config["replay_buffer_size"], concatenated_obs_dim, concatenated_action_dim, env.config["batch_size"])
 
-    debug_logger = Debug_logger(agent)
+    debug_logger = Debug_logger(agent, tb_summaryWriter)
+
+    def plot_activation_grads(name, model, debug_logger):
+        for n, c in model.named_children():
+            def get_activation_grad_plot_hook(name):
+                def hook_fn(module, grad_input, grad_output):
+                    # Calculate grad norm
+                    grad = torch.sum(grad_input[0], dim=0)
+                    grad_norm = torch.norm(grad, 2) # L2 norm
+                    debug_logger.tb_log_scalar_entry(name, grad_norm)
+                return hook_fn
+
+            if isinstance(c, torch.nn.ModuleList):
+                plot_activation_grads(name, c, debug_logger)
+
+            if isinstance(c, torch.nn.ReLU):
+                c.register_full_backward_hook(get_activation_grad_plot_hook(name=name + f'/ReLU:{n} grad norm'))
+            if isinstance(c, torch.nn.Tanh):
+                c.register_full_backward_hook(get_activation_grad_plot_hook(name=name + f'/Tanh:{n} grad norm'))
+
+    # plot_activation_grads(agent.critic)
+    plot_activation_grads("Actor", agent.actor, debug_logger)
+    plot_activation_grads("Critic", agent.actor, debug_logger)
 
     obs = env.reset()
     env.render()

@@ -1,13 +1,24 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 class Debug_logger():
-    def __init__(self, agent):
+    def __init__(self, agent, tb_summaryWriter):
         self.episode_rewards = []
         self.episode_states = []
         self.episode_actions = []
         self.agent = agent # DDPG model with self.critic network
+
+        self.tb_summaryWriter = tb_summaryWriter
+        self.entry_count_dict = defaultdict(lambda : 0)
+
+    
+    def tb_log_scalar_entry(self, entry_name, entry_value):
+        entry_index = self.entry_count_dict[entry_name]
+        self.tb_summaryWriter.add_scalar(entry_name, entry_value, entry_index)
+        self.entry_count_dict[entry_name] = entry_index + 1
+
 
     def record_entry(self, reward, state, action):
         self.episode_rewards.append(np.copy(reward))
