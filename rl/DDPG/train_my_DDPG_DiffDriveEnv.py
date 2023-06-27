@@ -10,6 +10,8 @@ from torch.utils.tensorboard import SummaryWriter
 import datetime
 from rl.diff_drive_GymEnv.DiffDrive_env import DiffDrive_Env
 
+from rl.debug_utils import *
+
 def main():
     # Read in parameters from config.yaml
     config_path = 'rl/config/config_DDPG_DiffDriveEnv.yaml'
@@ -63,6 +65,8 @@ def train_agent(env):
     agent.train_mode() # TODO: handle .eval() case for testing the model too.
     replay_buffer = ReplayBuffer(env.config["replay_buffer_size"], concatenated_obs_dim, concatenated_action_dim, env.config["batch_size"])
 
+    debug_logger = Debug_logger(agent)
+
     obs = env.reset()
     env.render()
     obs = torch.tensor(obs).float()
@@ -86,6 +90,7 @@ def train_agent(env):
         next_obs = torch.tensor(next_obs).float()
 
         cum_episode_rewards += reward
+        debug_logger.record_entry(reward, obs, action)
 
         # Check if "done" stands for the terminal state or for end of max_episode_length (important for target value calculation)
         if done and cur_iteration < env.max_episode_length:
@@ -115,6 +120,9 @@ def train_agent(env):
             # Commit experiences to replay_buffer
             replay_buffer.commit_append()
             replay_buffer.clear_staged_for_append()
+
+            debug_logger.plot_predQ_vs_return() # plot 
+            debug_logger.clear_recorded_rewards() # clear recorded values for a new episode
 
             # Reset env
             obs = env.reset()
