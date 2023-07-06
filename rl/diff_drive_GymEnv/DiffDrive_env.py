@@ -41,15 +41,19 @@ class DiffDrive_Env(Env):
             self.fig.canvas.flush_events()
             # line1, = ax.scatter()
 
-    def reset(self):
+    def reset(self, target_x=None, target_y=None):
         # Reset robot location in the world
         self.x = 0 # in meters
         self.y = 0 # in meters
         self.theta = 0 # in radians
 
         # target location wrt absolute world frame
-        self.target_x = 5
-        self.target_y = 5
+        if (target_x is not None) and (target_y is not None):
+            self.target_x = target_x
+            self.target_y = target_y
+        else:
+            self.target_x = 5
+            self.target_y = 5
 
         self.cur_iteration = 0
 
@@ -60,13 +64,10 @@ class DiffDrive_Env(Env):
             plt.close()
             plt.ion() # activate interactive mode
             self.fig, self.ax = plt.subplots(figsize=(4, 5))
-            # self.fig = plt.figure()
-            # self.ax = self.fig.add_subplot(111)
             self.line1, = self.ax.plot(self.x, self.y, ".b")
             self.line1, = self.ax.plot(self.target_x, self.target_y, "*r")
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
-            # line1, = ax.scatter()
 
         return observation
 
@@ -76,14 +77,14 @@ class DiffDrive_Env(Env):
             action : [linear_vel,  angular_velocity]
         """
         # Apply action on the robot:
-        # calculate displacements
+        # calculate orientation of the robot after the displacements
+        delta_theta = self._step_duration * action[1]
+        self.theta += delta_theta
+        # calculate position of the robot after the displacements
         delta_x = self._step_duration * action[0] * np.cos(self.theta)
         delta_y = self._step_duration * action[0] * np.sin(self.theta)
-        delta_theta = self._step_duration * action[1]
-        # calculate position/rotation of the robot after the displacements
         self.x += delta_x
         self.y += delta_y
-        self.theta += delta_theta
 
         # Simulate real time action taking
         if self.config['real_time']:
@@ -121,14 +122,10 @@ class DiffDrive_Env(Env):
 
     def render(self, mode="human"):
         if 'draw_coordinates' in self.config['render_mode']:
-            # self.line1.set_xdata(self.x)
-            # self.line1.set_ydata(self.y)
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
             plt.plot(self.x, self.y, ".b")
             plt.show(block=False)
-            # plt.pause(0.0001)
-            # plt.clf()
 
     def close(self):
         pass

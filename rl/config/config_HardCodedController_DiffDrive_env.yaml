@@ -1,0 +1,12 @@
+verbose: True # Whether to print info.
+distance_threshold: 0.1 # if robot is withing the reach of target smaller than this threshold value then goal state is reached
+render_mode: ['draw_coordinates'] # specifies which sensory informations to visualize. Currently supports ["no_render", "show_depth_camera_img_raw", "draw_coordinates"]. Corresponds to entries specified in ForkliftEnv.metadata['render_modes'] for more information.
+step_duration: 1_000_000_000 # 50_000_000 # specifies the duration of each step() with respect to simulation time in nanoseconds (e.g. 1 second is 1_000_000_000).
+real_time: False # if True than simulation is run in real time
+
+# ========== HYPERPARAMTERS DDPG: ============= 
+mode: "test" # ['train', 'test']
+random_agent: False # If True takes random actions. If False uses a hard coded naive controller as the agent
+total_episodes: 100 # total number of episodes to train
+max_episode_length: 100 # maximum iteration length of an episode.
+seed: 42 # used to set seed for reproducibility
