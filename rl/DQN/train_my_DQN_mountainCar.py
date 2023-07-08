@@ -57,8 +57,9 @@ def train_agent(env):
     agent = DQN_Agent(concatenated_obs_dim, concatenated_action_dim, \
         env.config["hidden_dims"], float(env.config["lr"]), \
             env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config["gamma"], \
-                logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
-    agent.train_mode() # TODO: handle .eval() case for testing the model too.
+                env.config["tau"], env.config["target_update_frequency"], env.config["use_target_network"], \
+                    logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
+    agent.train_mode()
     replay_buffer = ReplayBuffer(env.config["replay_buffer_size"], concatenated_obs_dim, 1, env.config["batch_size"])
 
     obs = env.reset()
@@ -97,15 +98,16 @@ def train_agent(env):
         obs = next_obs
 
         if verbose:
-            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward}')
+            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward}, term: {term}')
 
 
         if done:
             mean_ep_reward = cum_episode_rewards/cur_iteration
             rewards.append(cum_episode_rewards)
             # Log to Tensorboard
-            tb_summaryWriter.add_scalar("Training Reward/[per episode]", mean_ep_reward, cur_episode)
-            tb_summaryWriter.add_scalar("Training Reward/[ep_rew_mean]", np.mean(rewards), cur_episode)
+            tb_summaryWriter.add_scalar("Training Reward/[average per episode]", mean_ep_reward, cur_episode)
+            tb_summaryWriter.add_scalar("Training Reward/[total per episode]", cum_episode_rewards, cur_episode)
+            tb_summaryWriter.add_scalar("Training Reward/[running mean of episodes]", np.mean(rewards), cur_episode)
             tb_summaryWriter.add_scalar("Training epsilon", agent.epsilon, cur_episode)
 
             # Commit experiences to replay_buffer
@@ -153,12 +155,13 @@ def test_agent(env):
     cur_iteration = 0
 
     concatenated_obs_dim = sum(env.observation_space.shape)
-    concatenated_action_dim = sum(env.action_space.shape)
+    concatenated_action_dim = env.action_space.n
 
     agent = DQN_Agent(concatenated_obs_dim, concatenated_action_dim, \
         env.config["hidden_dims"], float(env.config["lr"]), \
             env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config["gamma"], \
-                logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
+                env.config["tau"], env.config["target_update_frequency"], env.config["use_target_network"], \
+                    logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
     agent.load_model()
     if env.config["verbose"]:
         print("Loaded a pre-trained agent...")

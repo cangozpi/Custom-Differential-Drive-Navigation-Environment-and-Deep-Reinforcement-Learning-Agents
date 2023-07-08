@@ -4,10 +4,14 @@ from torch import nn
 from rl.diff_drive_GymEnv import DiffDrive_env
 from rl.DDPG.Replay_Buffer import ReplayBuffer
 from rl.DDPG.utils import log_gradients_in_model, log_training_losses
+from copy import deepcopy
 
 
 class DQN_Agent(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden_dims, lr, initial_epsilon, epsilon_decay, min_epsilon, gamma, logger=None, log_full_detail=False):
+    """
+    Agent that support both DQN and DDQN.
+    """
+    def __init__(self, obs_dim, action_dim, hidden_dims, lr, initial_epsilon, epsilon_decay, min_epsilon, gamma, tau=0.995, target_update_frequency=2, use_target_network = True, logger=None, log_full_detail=False):
         super().__init__()
         self.logger = logger
         self.log_full_detail = log_full_detail
@@ -28,14 +32,21 @@ class DQN_Agent(nn.Module):
             prev_h_dim = h
         modules.append(torch.nn.Linear(prev_h_dim, action_dim))
         self.q_network = torch.nn.ModuleList(modules)
+        self.target_q_network = deepcopy(self.q_network)
+        for name, l in self.target_q_network.named_parameters(): # Freeze target network
+            l.requires_grad = False
 
-        self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr)
+        # self.optimizer = torch.optim.Adam(self.parameters(), lr)
+        self.optimizer = torch.optim.RMSprop(self.parameters(), lr)
         # self.loss_func = torch.nn.MSELoss()
         self.loss_func = torch.nn.SmoothL1Loss() # Huber Loss
 
         self.train_mode()
 
         self._n_updates = 0
+        self.use_target_network = bool(use_target_network)
+        self.target_update_frequency = int(target_update_frequency)
+        self.tau = float(tau)
 
     def forward(self, obs):
         """
@@ -44,11 +55,32 @@ class DQN_Agent(nn.Module):
         Returns:
             preds: [B, action_dim], logits/unnormalized probs over possible actions
         """
-        assert len(obs.shape) > 1
+        B = obs.shape[0]
+        assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
         out = obs
         for l in self.q_network:
             out = l(out)
         return out
+
+    def target_network_forward(self, obs):
+        """
+        Inputs:
+            obs: [B, obs_dim]
+        Returns:
+            preds: [B, action_dim], logits/unnormalized probs over possible actions
+        """
+        B = obs.shape[0]
+        assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
+        out = obs
+        for l in self.target_q_network:
+            out = l(out)
+        return out
+    
+    def update_target_network(self):
+        for target_p, p in zip(self.target_q_network.parameters(), self.q_network.parameters()):
+            target_p.data.copy_(
+                (target_p.data * self.tau) + (p.data * (1.0 - self.tau)) 
+            )
 
     def choose_action(self, obs):
         """
@@ -59,10 +91,11 @@ class DQN_Agent(nn.Module):
         Returns:
             action_preds: [B], integer id of the predicted action
         """
-        assert len(obs.shape) > 1
+        B = obs.shape[0]
+        assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
         if self.mode == "train":
             # e-greey policy
-            p = np.random.randint(0, 1)
+            p = np.random.random(1)
             if self.epsilon >= p: # random action
                 B = obs.shape[0] # batch dimension
                 random_actions = np.random.choice([i for i in range(self.action_dim)], size=B, replace=True)
@@ -92,12 +125,22 @@ class DQN_Agent(nn.Module):
         """
         Given a batch of data(i.e. (s,a,r,s',d)) performs training/model update on the DQN agent.
         """
+        B = state_batch.shape[0]
+        assert state_batch.shape == (B, self.obs_dim) and \
+            action_batch.shape == (B, 1) and \
+                reward_batch.shape == (B, 1) and \
+                    next_state_batch.shape == (B, self.obs_dim) and \
+                        terminal_batch.shape == (B, 1)
+
+
         self.train_mode()
 
         # TD Target
         with torch.no_grad():
-            B = state_batch.shape[0]
-            preds = self.forward(next_state_batch) # [B, action_dim]
+            if self.use_target_network:
+                preds = self.target_network_forward(next_state_batch) # [B, action_dim]
+            else:
+                preds = self.forward(next_state_batch) # [B, action_dim]
             max_q_value_preds, _ = torch.max(preds, dim=-1, keepdim=True) # [B, 1]
             assert max_q_value_preds.shape == (B, 1)
             TD_target = reward_batch + ((1 - terminal_batch.int()) * self.gamma * max_q_value_preds) # [B, 1]
@@ -120,6 +163,10 @@ class DQN_Agent(nn.Module):
             log_training_losses(loss.cpu().detach(), self.logger, self._n_updates, "DQN")
 
         self._n_updates += 1
+
+        if (self._n_updates % self.target_update_frequency == 0) and self.use_target_network: # update target network
+            self.update_target_network()
+
 
     def train_mode(self):
         """

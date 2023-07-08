@@ -3,21 +3,24 @@ log_full_detail: False # if True, logs a more detailed information to tensorboar
 
 
 
-# ========== HYPERPARAMTERS HER_DDPG: ============= 
+# ========== HYPERPARAMTERS DQN/DDQN: ============= 
 mode: "train" # ['train', 'test'] # TODO: set from config
 total_episodes: 10000 # total number of episodes to train
-max_episode_length: 200 # maximum iteration length of an episode.
+max_episode_length: 500 # maximum iteration length of an episode.
 warmup_steps: 100 # number of steps to take random actions before using the agents policy
-update_every: 200 # update model after every update_every steps taken.
-num_updates: 100 # at every update_every steps while updating the model perform num_updates many updates by sampling a new batch for each of them. 
-hidden_dims: [128, 128, 128] # holds dimensions of the hidden layers excluding the input layer and the input and the output dimensions for the actor network of ddpg agent.
-lr: 1e-4 # learning rate for the Actor Network20
-initial_epsilon: 0.9 # epsilon used for multiplying the gaussian distribution sample to obtain the noise to add to the agent's action (exploration).
-epsilon_decay: 0.999 # every time an action is taken epsilon is reduced by this amount (i.e. epsilon *= epsilon_decay).
-min_epsilon: 0.05 # minimum value that epsilon can decay to
-gamma: 0.9999 # next state discount rate
+update_every: 1 # update model after every update_every steps taken.
+use_target_network: False # If True use target_q_network (DDQN), else DQN
+target_update_frequency: 5 # after every target_update_frequency many updates, target network is updated
+tau: 0.995 # tau value used in updating the target networks using polyak averaging (i.e. targ_net = tau*targ_net + (1-tau) * net).
+num_updates: 1 # at every update_every steps while updating the model perform num_updates many updates by sampling a new batch for each of them. 
+hidden_dims: [2, 128, 256, 512] # holds dimensions of the hidden layers excluding the input layer and the input and the output dimensions for the actor network of ddpg agent.
+lr: 0.00025 # learning rate for the Actor Network20
+initial_epsilon: 0.3 # epsilon used for multiplying the gaussian distribution sample to obtain the noise to add to the agent's action (exploration).
+epsilon_decay: 0.9975 # every time an action is taken epsilon is reduced by this amount (i.e. epsilon *= epsilon_decay).
+min_epsilon: 0.001 # minimum value that epsilon can decay to
+gamma: 0.99 # next state discount rate
 replay_buffer_size: 1_000_000 # size of the replay buffer
-batch_size: 128
+batch_size: 64
 seed: 42 # used to set seed for reproducibility
-save_every: 500 # specifies after every how many updates to the model the agent model is saved
+save_every: 100 # specifies after every how many updates to the model the agent model is saved
 # ======================================= 
