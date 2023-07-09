@@ -11,7 +11,7 @@ import datetime
 
 def main():
     # Read in parameters from config.yaml
-    config_path = 'rl/config/config_DQN_MountainCarEnv.yaml'
+    config_path = 'rl/config/config_DQN_CartPoleEnv.yaml'
 
     # Start Env
     # Initialize Diff_drive environment

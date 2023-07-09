@@ -9,7 +9,7 @@ total_episodes: 10000 # total number of episodes to train
 max_episode_length: 500 # maximum iteration length of an episode.
 warmup_steps: 100 # number of steps to take random actions before using the agents policy
 update_every: 1 # update model after every update_every steps taken.
-use_target_network: False # If True use target_q_network (DDQN), else DQN
+use_target_network: True # If True use target_q_network (DDQN), else DQN
 target_update_frequency: 5 # after every target_update_frequency many updates, target network is updated
 tau: 0.995 # tau value used in updating the target networks using polyak averaging (i.e. targ_net = tau*targ_net + (1-tau) * net).
 num_updates: 1 # at every update_every steps while updating the model perform num_updates many updates by sampling a new batch for each of them. 

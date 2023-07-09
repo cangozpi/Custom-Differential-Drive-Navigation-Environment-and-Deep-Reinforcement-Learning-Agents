@@ -41,12 +41,15 @@ class DQN_Agent(nn.Module):
         # self.loss_func = torch.nn.MSELoss()
         self.loss_func = torch.nn.SmoothL1Loss() # Huber Loss
 
-        self.train_mode()
-
         self._n_updates = 0
         self.use_target_network = bool(use_target_network)
         self.target_update_frequency = int(target_update_frequency)
         self.tau = float(tau)
+
+        self.train_mode()
+        # Use GPU if available
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.to(self.device)
 
     def forward(self, obs):
         """
@@ -55,6 +58,8 @@ class DQN_Agent(nn.Module):
         Returns:
             preds: [B, action_dim], logits/unnormalized probs over possible actions
         """
+        # use GPU if available
+        obs = obs.to(self.device)
         B = obs.shape[0]
         assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
         out = obs
@@ -69,6 +74,8 @@ class DQN_Agent(nn.Module):
         Returns:
             preds: [B, action_dim], logits/unnormalized probs over possible actions
         """
+        # use GPU if available
+        obs = obs.to(self.device)
         B = obs.shape[0]
         assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
         out = obs
@@ -91,6 +98,9 @@ class DQN_Agent(nn.Module):
         Returns:
             action_preds: [B], integer id of the predicted action
         """
+        # use GPU if available
+        obs = obs.to(self.device)
+
         B = obs.shape[0]
         assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
         if self.mode == "train":
@@ -112,7 +122,7 @@ class DQN_Agent(nn.Module):
             if self.epsilon < self.min_epsilon:
                 self.epsilon = self.min_epsilon
 
-            return chosen_actions
+            return chosen_actions.cpu()
 
         else: # at test time do not take random actions
             with torch.no_grad():
@@ -132,6 +142,12 @@ class DQN_Agent(nn.Module):
                     next_state_batch.shape == (B, self.obs_dim) and \
                         terminal_batch.shape == (B, 1)
 
+        # use GPU if available
+        state_batch = state_batch.to(self.device)
+        action_batch = action_batch.to(self.device)
+        reward_batch = reward_batch.to(self.device)
+        next_state_batch = next_state_batch.to(self.device)
+        terminal_batch = terminal_batch.to(self.device)
 
         self.train_mode()
 
@@ -204,40 +220,3 @@ class DQN_Agent(nn.Module):
             torch.load('DQN_Agent.pkl')
         )
 
-
-
-
-if __name__ == "__main__":
-    # Read in parameters from config.yaml
-    config_path = 'rl/config/config_DQN_DiffDriveEnv.yaml'
-    env = DiffDrive_Env(config_path)
-
-
-    agent = DQN_Agent()
-
-    observation = env.reset()
-    env.render()
-    while 1:
-        if env.config['random_agent']: # use random agent
-            action = env.action_space.sample() # [linear_vel, angular_vel]
-        else: # use hard coded controller
-            action = agent.choose_action(observation, env)
-
-        next_observation, reward, done, info = env.step(action)
-
-        observation = next_observation # [agent_x, agent_y, agent_theta]
-
-        print(f'action: {action}, done: {done}, iteration: {info["iteration"]}, theta: {env.theta}')
-
-        if done:
-            time.sleep(2)
-
-            # set target location randomly
-            target_range = 10
-            random_target_state = (np.random.rand(2) * 2 * target_range) - target_range
-            target_x = np.clip(random_target_state[0], -target_range, target_range)
-            target_y = np.clip(random_target_state[1], -target_range, target_range)
-    
-            observation = env.reset(target_x=target_x, target_y=target_y)
-
-        env.render()
