@@ -13,7 +13,7 @@ class DiffDrive_Env(Env):
 
         # Set gym spaces
         self.action_space = spaces.Box(-1 * np.ones((2, )), np.ones((2, )), dtype=np.float32)
-        self.observation_space = spaces.Box(-1 * np.ones((3, )), np.ones((3, )), dtype=np.float32)
+        self.observation_space = spaces.Box(-1 * np.ones((5, )), np.ones((5, )), dtype=np.float32)
 
         self._step_duration = self.config['step_duration'] * (10 ** -9) # how long each individual action is taken for. (i.e. time btw observations). In seconds
         self.max_episode_length = self.config['max_episode_length'] # max num steps before terminating the episode
@@ -57,7 +57,7 @@ class DiffDrive_Env(Env):
 
         self.cur_iteration = 0
 
-        observation = get_observation(self.x, self.y, self.theta)
+        observation = get_observation(self.x, self.y, self.theta, self.target_x, self.target_y)
 
         if 'draw_coordinates' in self.config['render_mode']:
             # Rendering position
@@ -91,7 +91,7 @@ class DiffDrive_Env(Env):
             sleep(self._step_duration)
 
         # Get observation
-        observation = get_observation(self.x, self.y, self.theta)
+        observation = get_observation(self.x, self.y, self.theta, self.target_x, self.target_y)
 
         # Calculate Reward
         target_state = get_target_state(self.target_x, self.target_y)

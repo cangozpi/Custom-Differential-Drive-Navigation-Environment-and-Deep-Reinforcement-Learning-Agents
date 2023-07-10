@@ -12,8 +12,8 @@ def read_yaml_config(config_path):
         config = yaml.load(f, Loader=yaml.FullLoader)
     return config
 
-def get_observation(x, y, theta):
-    observation = [x, y, theta]
+def get_observation(agent_x, agent_y, agent_theta, target_x, target_y):
+    observation = [agent_x, agent_y, agent_theta, target_x, target_y]
     return np.array(observation)
 
 def get_reward(observation, target):

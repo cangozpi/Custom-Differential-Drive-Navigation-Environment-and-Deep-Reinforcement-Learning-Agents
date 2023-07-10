@@ -4,7 +4,7 @@ log_full_detail: False # if True, logs a more detailed information to tensorboar
 
 # DiffDrive Environment Specific Parameters
 distance_threshold: 0.1 # if robot is withing the reach of target smaller than this threshold value then goal state is reached
-render_mode: ['draw_coordinates'] # specifies which sensory informations to visualize. Currently supports ["no_render", "draw_coordinates"]. Corresponds to entries specified in ForkliftEnv.metadata['render_modes'] for more information.
+render_mode: ['no_render'] # specifies which sensory informations to visualize. Currently supports ["no_render", "draw_coordinates"]. Corresponds to entries specified in ForkliftEnv.metadata['render_modes'] for more information.
 step_duration: 50_000_000 # specifies the duration of each step() with respect to simulation time in nanoseconds (e.g. 1 second is 1_000_000_000).
 real_time: False # if True than simulation is run in real time
 
@@ -23,9 +23,9 @@ lr: 0.00025 # learning rate for the Actor Network20
 initial_epsilon: 0.3 # epsilon used for multiplying the gaussian distribution sample to obtain the noise to add to the agent's action (exploration).
 epsilon_decay: 0.9975 # every time an action is taken epsilon is reduced by this amount (i.e. epsilon *= epsilon_decay).
 min_epsilon: 0.001 # minimum value that epsilon can decay to
-gamma: 0.99 # next state discount rate
-replay_buffer_size: 1_000_000 # size of the replay buffer
-batch_size: 64
+gamma: 0.9999 # next state discount rate
+replay_buffer_size: 100_000 # size of the replay buffer
+batch_size: 2000
 seed: 42 # used to set seed for reproducibility
 save_every: 100 # specifies after every how many updates to the model the agent model is saved
 # ======================================= 
