@@ -26,8 +26,8 @@ class DiffDrive_Env(Env):
         self.theta = 0 # in radians
 
         # target location wrt absolute world frame
-        self.target_x = 5
-        self.target_y = 5
+        self.target_x = 1.5
+        self.target_y = 1.5
 
         if 'draw_coordinates' in self.config['render_mode']:
             # Rendering position
@@ -52,8 +52,8 @@ class DiffDrive_Env(Env):
             self.target_x = target_x
             self.target_y = target_y
         else:
-            self.target_x = 5
-            self.target_y = 5
+            self.target_x = 1.5
+            self.target_y = 1.5
 
         self.cur_iteration = 0
 

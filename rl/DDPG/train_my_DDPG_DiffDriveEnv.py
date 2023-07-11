@@ -143,15 +143,16 @@ def train_agent(env):
         env.render()
 
         if verbose:
-            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward}')
+            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward:.2f}')
 
 
         if done:
             mean_ep_reward = cum_episode_rewards/cur_iteration
             rewards.append(cum_episode_rewards)
             # Log to Tensorboard
-            tb_summaryWriter.add_scalar("Training Reward/[per episode]", mean_ep_reward, cur_episode)
-            tb_summaryWriter.add_scalar("Training Reward/[ep_rew_mean]", np.mean(rewards), cur_episode)
+            tb_summaryWriter.add_scalar("Training Reward/[average per episode]", mean_ep_reward, cur_episode)
+            tb_summaryWriter.add_scalar("Training Reward/[total per episode]", cum_episode_rewards, cur_episode)
+            tb_summaryWriter.add_scalar("Training Reward/[running mean of episodes]", np.mean(rewards), cur_episode)
             tb_summaryWriter.add_scalar("Training epsilon", agent.epsilon, cur_episode)
 
             # Commit experiences to replay_buffer
@@ -235,7 +236,7 @@ def test_agent(env):
         env.render()
 
         if verbose:
-            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward}')
+            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward:.2f}')
 
 
         if done:

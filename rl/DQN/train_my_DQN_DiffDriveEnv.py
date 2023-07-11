@@ -50,7 +50,10 @@ def train_agent(env):
     cur_num_updates = 0 # total number of updates including all the episodes
 
     concatenated_obs_dim = sum(env.observation_space.shape)
-    concatenated_action_dim = env.action_space.n
+    if hasattr(env.action_space, 'n'):
+        concatenated_action_dim = [env.action_space.n]
+    else:
+        concatenated_action_dim = env.action_space.nvec
 
     agent = DQN_Agent(concatenated_obs_dim, concatenated_action_dim, \
         env.config["hidden_dims"], float(env.config["lr"]), \
@@ -58,7 +61,8 @@ def train_agent(env):
                 env.config["tau"], env.config["target_update_frequency"], env.config["use_target_network"], \
                     logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
     agent.train_mode()
-    replay_buffer = ReplayBuffer(env.config["replay_buffer_size"], concatenated_obs_dim, 1, env.config["batch_size"])
+    num_action_heads = concatenated_action_dim[0]
+    replay_buffer = ReplayBuffer(env.config["replay_buffer_size"], concatenated_obs_dim, num_action_heads, env.config["batch_size"])
 
     obs = env.reset()
     obs = torch.tensor(obs).float()
@@ -96,7 +100,7 @@ def train_agent(env):
         obs = next_obs
 
         if verbose:
-            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward}, term: {term}')
+            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward:.2f}, term: {term}')
 
 
         if done:
@@ -143,7 +147,7 @@ def train_agent(env):
 
 def test_agent(env):
     # Initialize Tensorboard
-    log_dir, run_name = "logs_tensorboard/", "mountainCar my_DQN agent testing_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_dir, run_name = "logs_tensorboard/", "diff_drive my_DQN agent testing_" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     tb_summaryWriter = SummaryWriter(log_dir + run_name)
 
     # seed_everything(env.config["seed"]) # set seed
@@ -153,7 +157,10 @@ def test_agent(env):
     cur_iteration = 0
 
     concatenated_obs_dim = sum(env.observation_space.shape)
-    concatenated_action_dim = env.action_space.n
+    if hasattr(env.action_space, 'n'):
+        concatenated_action_dim = [env.action_space.n]
+    else:
+        concatenated_action_dim = env.action_space.nvec
 
     agent = DQN_Agent(concatenated_obs_dim, concatenated_action_dim, \
         env.config["hidden_dims"], float(env.config["lr"]), \
@@ -186,7 +193,7 @@ def test_agent(env):
         env.render()
 
         if verbose:
-            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward}')
+            print(f'episode: {cur_episode}, iteration: {cur_iteration}, action: {action}, reward: {reward:.2f}')
 
 
         if done:

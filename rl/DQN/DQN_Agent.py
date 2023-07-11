@@ -17,7 +17,9 @@ class DQN_Agent(nn.Module):
         self.log_full_detail = log_full_detail
 
         self.obs_dim = obs_dim
+        self.num_hidden_dims = len(hidden_dims) * 2 # note that *2 is due to activation functions that follow
         self.action_dim = action_dim
+        self.num_action_heads = len(action_dim)
         self.mode = "train"
         self.epsilon = initial_epsilon
         self.epsilon_decay = epsilon_decay
@@ -30,7 +32,8 @@ class DQN_Agent(nn.Module):
             modules.append(torch.nn.Linear(prev_h_dim, h))
             modules.append(torch.nn.ReLU())
             prev_h_dim = h
-        modules.append(torch.nn.Linear(prev_h_dim, action_dim))
+        for action_head in action_dim:
+            modules.append(torch.nn.Linear(prev_h_dim, action_head))
         self.q_network = torch.nn.ModuleList(modules)
         self.target_q_network = deepcopy(self.q_network)
         for name, l in self.target_q_network.named_parameters(): # Freeze target network
@@ -56,15 +59,26 @@ class DQN_Agent(nn.Module):
         Inputs:
             obs: [B, obs_dim]
         Returns:
-            preds: [B, action_dim], logits/unnormalized probs over possible actions
+            preds: [B, num_action_heads, action_dim], logits/unnormalized probs over possible actions
         """
         # use GPU if available
         obs = obs.to(self.device)
         B = obs.shape[0]
         assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
         out = obs
-        for l in self.q_network:
-            out = l(out)
+        # Pass through base
+        for l in range(self.num_hidden_dims):
+            out = self.q_network[l](out) # [B, hidden_dim]
+
+        # Pass through action_heads
+        action_head_logits = []
+        for h in range(self.num_action_heads):
+            h = self.num_hidden_dims + h
+            cur_action = self.q_network[h](out) # [B, action_dim]
+            action_head_logits.append(cur_action)
+
+        out = torch.stack(action_head_logits, dim=1) # [B, num_action_heads, action_dim]
+
         return out
 
     def target_network_forward(self, obs):
@@ -72,15 +86,26 @@ class DQN_Agent(nn.Module):
         Inputs:
             obs: [B, obs_dim]
         Returns:
-            preds: [B, action_dim], logits/unnormalized probs over possible actions
+            preds: [B, num_action_heads, action_dim], logits/unnormalized probs over possible actions
         """
         # use GPU if available
         obs = obs.to(self.device)
         B = obs.shape[0]
         assert len(obs.shape) > 1 and obs.shape == (B, self.obs_dim)
         out = obs
-        for l in self.target_q_network:
-            out = l(out)
+        # Pass through base
+        for l in range(self.num_hidden_dims):
+            out = self.target_q_network[l](out) # [B, hidden_dim]
+
+        # Pass through action_heads
+        action_head_logits = []
+        for h in range(self.num_action_heads):
+            h = self.num_hidden_dims + h
+            cur_action = self.target_q_network[h](out) # [B, action_dim]
+            action_head_logits.append(cur_action)
+
+        out = torch.stack(action_head_logits, dim=1) # [B, num_action_heads, action_dim]
+
         return out
     
     def update_target_network(self):
@@ -108,13 +133,16 @@ class DQN_Agent(nn.Module):
             p = np.random.random(1)
             if self.epsilon >= p: # random action
                 B = obs.shape[0] # batch dimension
-                random_actions = np.random.choice([i for i in range(self.action_dim)], size=B, replace=True)
-                chosen_actions = torch.tensor(random_actions)
+                random_actions = []
+                for action_dim in self.action_dim:
+                    cur_random_action = np.random.choice([i for i in range(action_dim)], size=B, replace=True) # [B]
+                    random_actions.append(torch.tensor(cur_random_action))
+
+                chosen_actions = torch.stack(random_actions, dim=1) # [B, num_action_heads]
             else: # policy action
                 with torch.no_grad():
-                    preds = self.forward(obs) # [B, action_dim]
-                    q_value_preds, action_preds = torch.max(preds, dim=-1) # [B]
-                    assert len(q_value_preds.shape) == 1 and len(action_preds.shape) == 1
+                    preds = self.forward(obs) # [B, num_action_heads, action_dim]
+                    q_value_preds, action_preds = torch.max(preds, dim=-1) # [B, num_action_heads]
                     chosen_actions = action_preds
 
             # Decay epsilon
@@ -126,10 +154,9 @@ class DQN_Agent(nn.Module):
 
         else: # at test time do not take random actions
             with torch.no_grad():
-                preds = self.forward(obs) # [B, action_dim]
-                q_value_preds, action_preds = torch.max(preds, dim=-1) # [B]
-                assert len(q_value_preds.shape) == 1 and len(action_preds.shape) == 1
-            return action_preds
+                preds = self.forward(obs) # [B, num_action_heds, action_dim]
+                q_value_preds, action_preds = torch.max(preds, dim=-1) # [B, num_action_heads]
+            return action_preds.cpu()
     
     def update(self, state_batch, action_batch, reward_batch, next_state_batch, terminal_batch):
         """
@@ -137,7 +164,7 @@ class DQN_Agent(nn.Module):
         """
         B = state_batch.shape[0]
         assert state_batch.shape == (B, self.obs_dim) and \
-            action_batch.shape == (B, 1) and \
+            action_batch.shape == (B, self.num_action_heads) and \
                 reward_batch.shape == (B, 1) and \
                     next_state_batch.shape == (B, self.obs_dim) and \
                         terminal_batch.shape == (B, 1)
@@ -154,16 +181,18 @@ class DQN_Agent(nn.Module):
         # TD Target
         with torch.no_grad():
             if self.use_target_network:
-                preds = self.target_network_forward(next_state_batch) # [B, action_dim]
+                preds = self.target_network_forward(next_state_batch) # [B, num_action_heads, action_dim]
             else:
-                preds = self.forward(next_state_batch) # [B, action_dim]
+                preds = self.forward(next_state_batch) # [B, num_action_heads, action_dim]
             max_q_value_preds, _ = torch.max(preds, dim=-1, keepdim=True) # [B, 1]
-            assert max_q_value_preds.shape == (B, 1)
-            TD_target = reward_batch + ((1 - terminal_batch.int()) * self.gamma * max_q_value_preds) # [B, 1]
+            assert max_q_value_preds.shape == (B, self.num_action_heads, 1)
 
-        preds = self.forward(state_batch) # [B, action_dim]
-        q_value_preds = torch.gather(preds, dim=1, index=action_batch.long()) # [B, 1]
-        assert q_value_preds.shape == (B, 1)
+            TD_target = reward_batch.unsqueeze(1) + ((1 - terminal_batch.unsqueeze(1).int()) * self.gamma * max_q_value_preds) # [B, num_action_heads, 1]
+
+
+        preds = self.forward(state_batch) # [B, num_action_heads, action_dim]
+        q_value_preds = torch.gather(preds, dim=2, index=action_batch.unsqueeze(-1).long()) # [B, num_action_heads, 1]
+        assert q_value_preds.shape == (B, self.num_action_heads, 1)
 
         loss = self.loss_func(input=q_value_preds, target=TD_target)
 
