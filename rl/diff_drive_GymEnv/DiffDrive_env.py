@@ -7,13 +7,14 @@ import matplotlib.pyplot as plt
 
 class DiffDrive_Env(Env):
     def __init__(self, config_path):
+        super().__init__()
         # Read in parameters from config.yaml
         self.config = read_yaml_config(config_path)
         self.render_mode = self.config['render_mode']
 
         # Set gym spaces
         self.action_space = spaces.Box(-1 * np.ones((2, )), np.ones((2, )), dtype=np.float32)
-        self.observation_space = spaces.Box(-1 * np.ones((5, )), np.ones((5, )), dtype=np.float32)
+        self.observation_space = spaces.Box(-float('inf') * np.ones((5, )), float('inf')*np.ones((5, )), dtype=np.float32)
 
         self._step_duration = self.config['step_duration'] * (10 ** -9) # how long each individual action is taken for. (i.e. time btw observations). In seconds
         self.max_episode_length = self.config['max_episode_length'] # max num steps before terminating the episode
@@ -57,7 +58,7 @@ class DiffDrive_Env(Env):
 
         self.cur_iteration = 0
 
-        observation = get_observation(self.x, self.y, self.theta, self.target_x, self.target_y)
+        observation = get_observation(self.x, self.y, self.theta, self.target_x, self.target_y).astype(self.observation_space.dtype)
 
         if 'draw_coordinates' in self.config['render_mode']:
             # Rendering position
@@ -91,7 +92,7 @@ class DiffDrive_Env(Env):
             sleep(self._step_duration)
 
         # Get observation
-        observation = get_observation(self.x, self.y, self.theta, self.target_x, self.target_y)
+        observation = get_observation(self.x, self.y, self.theta, self.target_x, self.target_y).astype(self.observation_space.dtype)
 
         # Calculate Reward
         target_state = get_target_state(self.target_x, self.target_y)
@@ -117,6 +118,7 @@ class DiffDrive_Env(Env):
         }
 
         self.cur_iteration += 1
+        self.render()
 
         return observation, reward, done, info
 
