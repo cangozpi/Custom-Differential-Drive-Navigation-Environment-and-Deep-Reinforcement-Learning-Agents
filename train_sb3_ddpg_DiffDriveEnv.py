@@ -6,7 +6,7 @@ from stable_baselines3 import DDPG, HerReplayBuffer
 from rl.diff_drive_GymEnv.DiffDrive_env import DiffDrive_Env
 
 
-mode = 3
+mode = 2
 
 
 # For env and reward options refer to https://panda-gym.readthedocs.io/en/latest/usage/environments.html
@@ -47,7 +47,7 @@ if mode == 2:
         # replay_buffer = HerReplayBuffer(env, 1_000_000, n_sampled_goal=0)
         model = DDPG(policy="MlpPolicy", env=env, verbose=1, \
             tensorboard_log="./tb_logs/", \
-            learning_rate=1e-3, learning_starts=0, batch_size=100, \
+            learning_rate=1e-3, learning_starts=100, batch_size=100, \
             # replay_buffer_class=HerReplayBuffer,
             # Parameters for HER
             # replay_buffer_kwargs=dict(
@@ -56,7 +56,7 @@ if mode == 2:
             #     online_sampling=True,
             #     max_episode_length=50,
             # ),
-            gradient_steps=100,
+            # gradient_steps=100,
             policy_kwargs={
                 'net_arch': {
                     'pi': [400, 300],
@@ -69,7 +69,7 @@ if mode == 2:
             seed=42
     )
         print(model.policy)
-        model.learn(500_000, log_interval=1, tb_log_name="sb3_DDPG_DiffDriveEnv", progress_bar=True)
+        model.learn(100000, log_interval=1, tb_log_name="sb3_DDPG_DiffDriveEnv", progress_bar=True)
 
         model.save("DDPG_DiffDriveEnv") # Save model
     
