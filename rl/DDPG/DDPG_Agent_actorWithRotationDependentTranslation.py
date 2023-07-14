@@ -4,7 +4,7 @@ from copy import deepcopy
 from utils import log_gradients_in_model, log_training_losses
 
 
-class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent and call its super().__init__()
+class DDPG_Agent_actorWithRotationDependentTranslation(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent and call its super().__init__()
     """
     Refer to https://spinningup.openai.com/en/latest/algorithms/ddpg.html for implementation details.
     """
@@ -194,9 +194,10 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
         """
         Saves the current state of the neural network models of the actor and the critic of the DDPG agent.
         """
+
         torch.save(
             self.state_dict(),
-            'DDPG_Agent.pkl'
+            'DDPG_Agent_actorWithRotationDependentTranslation.pkl'
         )
     
 
@@ -205,7 +206,8 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
         Loads the previously saved states of the actor and critic models to the current DDPG agent.
         """
         self.load_state_dict(
-            torch.load('DDPG_Agent.pkl')
+            torch.load('DDPG_Agent_actorWithRotationDependentTranslation.pkl')
+            
         )
 
 
@@ -224,36 +226,77 @@ class Actor(nn.Module):
         self.action_dim = action_dim
         self.max_action = max_action # actions returned is in range [-max_action, max_action]
 
-        layers = []
+        base_layers = []
         prev_dim = self.obs_dim  # shape of the flattened input to the network
+        # Base network
         for i, hidden_dim in enumerate(hidden_dims):
             # if i == 0:
             #     layers.append(torch.nn.Flatten())
-            layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
-            layers.append(torch.nn.Linear(prev_dim, hidden_dim))
-            layers.append(torch.nn.ReLU())
+            base_layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
+            base_layers.append(torch.nn.Linear(prev_dim, hidden_dim))
+            base_layers.append(torch.nn.ReLU())
             prev_dim = hidden_dim
-        layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
-        layers.append(torch.nn.Linear(prev_dim, action_dim))
-        layers.append(torch.nn.Tanh()) 
-                
-        self.model_layers = torch.nn.ModuleList(layers)
-    
+        base_network_output_dim = prev_dim
+
+        # Rotation Head
+        rotation_head_layers = []
+        rotation_head_layers.extend([
+            torch.nn.LayerNorm(base_network_output_dim),
+            torch.nn.Linear(base_network_output_dim, 1), # Note that 1 corresponds to dimension of rotation action
+            torch.nn.LayerNorm(1),
+            torch.nn.Tanh()
+            ])
+
+        # Translation Head
+        translation_head_layers = []
+        translation_head_layers.extend([
+            torch.nn.LayerNorm(base_network_output_dim + 1), # Note that 1 corresponds to dimension of rotation action),
+            torch.nn.Linear((base_network_output_dim + 1), 1), # Note that 1 corresponds to dimension of translation action
+            torch.nn.LayerNorm(1),
+            torch.nn.Tanh()
+            ])
+
+
+        # 
+        self.model_layers = torch.nn.ModuleDict({
+            'base_network': torch.nn.ModuleList(base_layers),
+            'rotation_head_network': torch.nn.ModuleList(rotation_head_layers),
+            'translation_head_network': torch.nn.ModuleList(translation_head_layers)
+        })
+
     
     def forward(self, obs_batch):
         """
         Inputs:
             obs_batch (torch.Tensor): a batch of states.
+        Outputs:
+            action : [linear_vel,  angular_velocity]
         """
         # pass input through the layers of the model
         batch_dim = obs_batch.shape[0]
-        out = obs_batch.reshape(batch_dim, -1) # --> [B, obs_dim]
+        base_network_output = obs_batch.reshape(batch_dim, -1) # --> [B, obs_dim]
+        assert len(base_network_output.shape) == 2
 
-        for layer in self.model_layers:
-            out = layer(out)
+        # Pass through Base Network layers
+        for layer in self.model_layers['base_network']:
+            base_network_output = layer(base_network_output)
         
-        out = out * self.max_action
-        return out
+        # Pass through Rotation Head Network layers
+        rotation_pred = base_network_output
+        for layer in self.model_layers['rotation_head_network']:
+            rotation_pred = layer(rotation_pred)
+
+        # Pass through Translation Head Network layers
+        translation_pred = torch.concatenate([base_network_output, rotation_pred], dim=-1) # translation network takes both the encoded representation of obs and the rotation prediction as its input
+        assert translation_pred.shape[0] == batch_dim
+        for layer in self.model_layers['translation_head_network']:
+            translation_pred = layer(translation_pred)
+
+        # Concatenate rotation action prediction with translation action prediction
+        action_pred = torch.concatenate([translation_pred, rotation_pred], dim=-1)
+        action_pred = action_pred * self.max_action
+
+        return action_pred
 
 
 class Critic(nn.Module):

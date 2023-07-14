@@ -1,6 +1,7 @@
 import gym
 import time
 from DDPG_Agent import DDPG_Agent
+from DDPG_Agent_actorWithRotationDependentTranslation import DDPG_Agent_actorWithRotationDependentTranslation
 from Replay_Buffer import ReplayBuffer 
 from utils import *
 
@@ -73,10 +74,16 @@ def train_agent(env):
     concatenated_obs_dim = sum(env.observation_space.shape)
     concatenated_action_dim = sum(env.action_space.shape)
 
-    agent = DDPG_Agent(concatenated_obs_dim, concatenated_action_dim, \
-        env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["critic_lr"]), \
-            env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \
-                max_action=torch.tensor(env.action_space.high).float(), policy_update_delay=env.config['policy_update_delay'], logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
+    if False:
+        agent = DDPG_Agent(concatenated_obs_dim, concatenated_action_dim, \
+            env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["critic_lr"]), \
+                env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \
+                    max_action=torch.tensor(env.action_space.high).float(), policy_update_delay=env.config['policy_update_delay'], logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
+    else:
+        agent = DDPG_Agent_actorWithRotationDependentTranslation(concatenated_obs_dim, concatenated_action_dim, \
+            env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["critic_lr"]), \
+                env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \
+                    max_action=torch.tensor(env.action_space.high).float(), policy_update_delay=env.config['policy_update_delay'], logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
     agent.train_mode() # TODO: handle .eval() case for testing the model too.
     replay_buffer = ReplayBuffer(env.config["replay_buffer_size"], concatenated_obs_dim, concatenated_action_dim, env.config["batch_size"])
 
@@ -206,10 +213,16 @@ def test_agent(env):
     concatenated_obs_dim = sum(env.observation_space.shape)
     concatenated_action_dim = sum(env.action_space.shape)
 
-    agent = DDPG_Agent(concatenated_obs_dim, concatenated_action_dim, \
-        env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["actor_lr"]), \
-            env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \
-                max_action=torch.tensor(env.action_space.high).float())
+    if False:
+        agent = DDPG_Agent(concatenated_obs_dim, concatenated_action_dim, \
+            env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["actor_lr"]), \
+                env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \
+                    max_action=torch.tensor(env.action_space.high).float())
+    else:
+        agent = DDPG_Agent_actorWithRotationDependentTranslation(concatenated_obs_dim, concatenated_action_dim, \
+            env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["actor_lr"]), \
+                env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \
+                    max_action=torch.tensor(env.action_space.high).float())
     agent.load_model()
     if env.config["verbose"]:
         print("Loaded a pre-trained agent...")
