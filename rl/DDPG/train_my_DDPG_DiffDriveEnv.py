@@ -89,7 +89,7 @@ def train_agent(env):
 
     debug_logger = Debug_logger(agent, tb_summaryWriter)
 
-    def plot_activation_grads(name, model, debug_logger):
+    def attach_hook_plot_activation_grads(name, model, debug_logger):
         for n, c in model.named_children():
             def get_activation_grad_plot_hook(name):
                 def hook_fn(module, grad_input, grad_output):
@@ -100,7 +100,7 @@ def train_agent(env):
                 return hook_fn
 
             if isinstance(c, torch.nn.ModuleList):
-                plot_activation_grads(name, c, debug_logger)
+                attach_hook_plot_activation_grads(name, c, debug_logger)
 
             if isinstance(c, torch.nn.ReLU):
                 c.register_full_backward_hook(get_activation_grad_plot_hook(name=name + f'/ReLU:{n} grad norm'))
@@ -108,8 +108,8 @@ def train_agent(env):
                 c.register_full_backward_hook(get_activation_grad_plot_hook(name=name + f'/Tanh:{n} grad norm'))
 
     # plot_activation_grads(agent.critic)
-    plot_activation_grads("Actor", agent.actor, debug_logger)
-    plot_activation_grads("Critic", agent.actor, debug_logger)
+    attach_hook_plot_activation_grads("Actor", agent.actor, debug_logger)
+    attach_hook_plot_activation_grads("Critic", agent.critic, debug_logger)
 
     obs = env.reset()
     env.render()
@@ -133,7 +133,7 @@ def train_agent(env):
         next_obs, reward, done, info = env.step(np.copy(action))
         next_obs = torch.tensor(next_obs).float()
 
-        cum_episode_rewards += reward
+        cum_episode_rewards += ((env.config['gamma'] ** (cur_iteration - 1) ) * reward)
         debug_logger.record_entry(reward, obs, action)
 
         # Check if "done" stands for the terminal state or for end of max_episode_length (important for target value calculation)

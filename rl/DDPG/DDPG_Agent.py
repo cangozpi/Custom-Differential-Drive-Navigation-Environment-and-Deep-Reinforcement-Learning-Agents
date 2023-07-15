@@ -110,7 +110,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
         # Gradient Norm Clipping
         nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=2.0, norm_type=2)
 
-        self.optim_critic.step()
+        # self.optim_critic.step()
 
         # Log Critic's stats to tensorboard
         log_gradients_in_model(self.critic, self.logger, self._n_updates, "Critic", self.log_full_detail)
