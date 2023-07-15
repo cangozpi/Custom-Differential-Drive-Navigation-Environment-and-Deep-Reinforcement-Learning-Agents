@@ -18,15 +18,15 @@ total_episodes: 10000 # total number of episodes to train
 max_episode_length: 500 # maximum iteration length of an episode.
 warmup_steps: 100 # number of steps to take random actions before using the agents policy
 update_every: 2048 # update model after every update_every steps taken.
-num_updates: 10 # at every update_every steps while updating the model perform num_updates many updates by sampling a new batch for each of them. 
+num_updates: 4 # at every update_every steps while updating the model perform num_updates many updates by sampling a new batch for each of them. 
 actor_hidden_dims: [400, 300] # holds dimensions of the hidden layers excluding the input layer and the input and the output dimensions for the actor network of ddpg agent.
 critic_hidden_dims: [400, 300] # holds dimensions of the hidden layers excluding the input layer and the input and the output dimensions for the critic network of ddpg agent.
 actor_lr: 0.0003 # learning rate for the Actor Network20
 critic_lr: 0.0003 # learning rate for the Critic Network
 initial_epsilon: 1.0 # epsilon used for multiplying the gaussian distribution sample to obtain the noise to add to the agent's action (exploration).
 epsilon_decay: 0.9999 # every time an action is taken epsilon is reduced by this amount (i.e. epsilon *= epsilon_decay).
-min_epsilon: 0.05 # minimum value that epsilon can decay to
-act_noise: 0.3 # stddev for Gaussian exploration noise added to policy at training time. (At test time, no noise is added.)
+min_epsilon: 0.3 # minimum value that epsilon can decay to
+act_noise: 0.5 # stddev for Gaussian exploration noise added to policy at training time. (At test time, no noise is added.)
 target_noise: 0.2 # stddev for smoothing noise added to target policy.
 clip_noise_range: 0.5 # noise is clipped btw [-clip_noise_range, clip_noise_range] before being added to the action
 gamma: 0.9999 # next state discount rate

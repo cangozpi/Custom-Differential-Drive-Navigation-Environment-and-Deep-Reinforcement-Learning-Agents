@@ -74,7 +74,7 @@ def train_agent(env):
     concatenated_obs_dim = sum(env.observation_space.shape)
     concatenated_action_dim = sum(env.action_space.shape)
 
-    if False:
+    if True:
         agent = DDPG_Agent(concatenated_obs_dim, concatenated_action_dim, \
             env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["critic_lr"]), \
                 env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \
@@ -213,7 +213,7 @@ def test_agent(env):
     concatenated_obs_dim = sum(env.observation_space.shape)
     concatenated_action_dim = sum(env.action_space.shape)
 
-    if False:
+    if True:
         agent = DDPG_Agent(concatenated_obs_dim, concatenated_action_dim, \
             env.config["actor_hidden_dims"], env.config["critic_hidden_dims"], float(env.config["actor_lr"]), float(env.config["actor_lr"]), \
                 env.config["initial_epsilon"], env.config["epsilon_decay"], env.config['min_epsilon'], env.config['act_noise'], env.config['target_noise'], env.config['clip_noise_range'], env.config["gamma"], env.config["tau"], \

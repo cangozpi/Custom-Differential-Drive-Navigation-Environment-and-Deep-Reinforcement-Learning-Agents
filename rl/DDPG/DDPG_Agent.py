@@ -8,7 +8,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
     """
     Refer to https://spinningup.openai.com/en/latest/algorithms/ddpg.html for implementation details.
     """
-    def __init__(self, obs_dim, action_dim, actor_hidden_dims, critic_hidden_dims, actor_lr, critic_lr, initial_epsilon, epsilon_decay, min_epsilon, act_noise, target_noise, clip_noise_range, gamma, tau, max_action, policy_update_delay=2, logger=None, log_full_detail=False):
+    def __init__(self, obs_dim, action_dim, actor_hidden_dims, critic_hidden_dims, actor_lr, critic_lr, initial_epsilon, epsilon_decay, min_epsilon, act_noise, target_noise, clip_noise_range, gamma, tau, max_action, policy_update_delay=2, logger=None, log_full_detail=False, use_xavier_uniform=False):
         super().__init__()
         self.logger = logger
         self.log_full_detail = log_full_detail
@@ -27,7 +27,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
         self.actor = Actor(obs_dim, action_dim, actor_hidden_dims, max_action)
         self.critic = Critic(obs_dim, action_dim, critic_hidden_dims)
 
-        self.actor_target = Actor(obs_dim, action_dim, actor_hidden_dims, max_action)
+        self.actor_target = Actor(obs_dim, action_dim, actor_hidden_dims, max_action, use_xavier_uniform=use_xavier_uniform)
         self.critic_target = Critic(obs_dim, action_dim, actor_hidden_dims)
 
         self.actor_target.load_state_dict(self.actor.state_dict())
@@ -62,6 +62,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
         # during training add noise to the action
         if self.mode == "train":
             noise = torch.clamp(self.epsilon * torch.randn_like(action) * self.act_noise, -self.clip_noise_range, self.clip_noise_range)
+            print(f'noise: {noise}')
             action += noise
             action = torch.clip(action, -self.max_action, self.max_action)
 
@@ -211,7 +212,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
 
 
 class Actor(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden_dims:list, max_action):
+    def __init__(self, obs_dim, action_dim, hidden_dims:list, max_action, use_xavier_uniform=False):
         """
         Inputs:
             obs_dim (tuple): dimension of the observations. (e.g. (C, H, W), for and RGB image observation).
@@ -236,6 +237,10 @@ class Actor(nn.Module):
         layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
         layers.append(torch.nn.Linear(prev_dim, action_dim))
         layers.append(torch.nn.Tanh()) 
+
+        # Use Xavier initializaation because of tanh nonlinearity
+        if use_xavier_uniform:
+            torch.nn.init.xavier_uniform_(layers[-2].weight, gain=torch.nn.init.calculate_gain(nonlinearity='tanh'))
                 
         self.model_layers = torch.nn.ModuleList(layers)
     
