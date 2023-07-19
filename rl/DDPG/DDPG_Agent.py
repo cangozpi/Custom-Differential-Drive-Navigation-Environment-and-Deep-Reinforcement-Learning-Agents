@@ -8,7 +8,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
     """
     Refer to https://spinningup.openai.com/en/latest/algorithms/ddpg.html for implementation details.
     """
-    def __init__(self, obs_dim, action_dim, actor_hidden_dims, critic_hidden_dims, actor_lr, critic_lr, initial_epsilon, epsilon_decay, min_epsilon, act_noise, target_noise, clip_noise_range, gamma, tau, max_action, policy_update_delay=2, logger=None, log_full_detail=False, use_xavier_uniform=False):
+    def __init__(self, obs_dim, action_dim, actor_hidden_dims, critic_hidden_dims, actor_lr, critic_lr, initial_epsilon, epsilon_decay, min_epsilon, act_noise, target_noise, clip_noise_range, gamma, tau, max_action, policy_update_delay=2, logger=None, log_full_detail=False):
         super().__init__()
         self.logger = logger
         self.log_full_detail = log_full_detail
@@ -27,7 +27,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
         self.actor = Actor(obs_dim, action_dim, actor_hidden_dims, max_action)
         self.critic = Critic(obs_dim, action_dim, critic_hidden_dims)
 
-        self.actor_target = Actor(obs_dim, action_dim, actor_hidden_dims, max_action, use_xavier_uniform=use_xavier_uniform)
+        self.actor_target = Actor(obs_dim, action_dim, actor_hidden_dims, max_action)
         self.critic_target = Critic(obs_dim, action_dim, actor_hidden_dims)
 
         self.actor_target.load_state_dict(self.actor.state_dict())
@@ -41,8 +41,10 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
             actor_p.requires_grad = False
             critic_p.requires_grad = False
 
-        self.optim_actor = torch.optim.Adam(self.actor.parameters(), actor_lr)
-        self.optim_critic = torch.optim.Adam(self.critic.parameters(), critic_lr)
+        # self.optim_actor = torch.optim.Adam(self.actor.parameters(), actor_lr)
+        # self.optim_critic = torch.optim.Adam(self.critic.parameters(), critic_lr)
+        self.optim_actor = torch.optim.AdamW(self.actor.parameters(), lr=actor_lr)
+        self.optim_critic = torch.optim.AdamW(self.critic.parameters(), lr=critic_lr)
 
         self.critic_loss_func = torch.nn.MSELoss()
 
@@ -64,7 +66,6 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
             noise = torch.clamp(self.epsilon * torch.randn_like(action) * self.act_noise, -self.clip_noise_range, self.clip_noise_range)
             print(f'noise: {noise}')
             action += noise
-            action = torch.clip(action, -self.max_action, self.max_action)
 
             # noise = self.epsilon * torch.normal(mean=torch.tensor(0.0),std=torch.tensor(1.0))
             # noise = self.epsilon * torch.normal(mean=torch.tensor(0.0),std=torch.tensor(0.2))
@@ -212,7 +213,7 @@ class DDPG_Agent(nn.Module): #TODO: make this extend a baseclass (ABC) of Agent 
 
 
 class Actor(nn.Module):
-    def __init__(self, obs_dim, action_dim, hidden_dims:list, max_action, use_xavier_uniform=False):
+    def __init__(self, obs_dim, action_dim, hidden_dims:list, max_action):
         """
         Inputs:
             obs_dim (tuple): dimension of the observations. (e.g. (C, H, W), for and RGB image observation).
@@ -230,7 +231,7 @@ class Actor(nn.Module):
         for i, hidden_dim in enumerate(hidden_dims):
             # if i == 0:
             #     layers.append(torch.nn.Flatten())
-            layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
+            # layers.append(torch.nn.LayerNorm(prev_dim)) # Add batchNorm to mitigate tanh saturation problem
             layers.append(torch.nn.Linear(prev_dim, hidden_dim))
             layers.append(torch.nn.ReLU())
             prev_dim = hidden_dim
@@ -238,9 +239,16 @@ class Actor(nn.Module):
         layers.append(torch.nn.Linear(prev_dim, action_dim))
         layers.append(torch.nn.Tanh()) 
 
+
         # Use Xavier initializaation because of tanh nonlinearity
+        use_xavier_uniform = True
         if use_xavier_uniform:
-            torch.nn.init.xavier_uniform_(layers[-2].weight, gain=torch.nn.init.calculate_gain(nonlinearity='tanh'))
+            for i, layer in enumerate(layers):
+                if isinstance(layer, torch.nn.Linear):
+                    if isinstance(layers[i+1], torch.nn.ReLU):
+                        torch.nn.init.xavier_uniform_(layer.weight, gain=torch.nn.init.calculate_gain(nonlinearity='relu'))
+                    if isinstance(layers[i+1], torch.nn.Tanh):
+                        torch.nn.init.xavier_uniform_(layer.weight, gain=torch.nn.init.calculate_gain(nonlinearity='tanh'))
                 
         self.model_layers = torch.nn.ModuleList(layers)
     

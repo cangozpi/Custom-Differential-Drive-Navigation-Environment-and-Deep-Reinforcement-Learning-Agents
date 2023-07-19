@@ -63,7 +63,6 @@ class DDPG_Agent_actorWithRotationDependentTranslation(nn.Module): #TODO: make t
         if self.mode == "train":
             noise = torch.clamp(self.epsilon * torch.randn_like(action) * self.act_noise, -self.clip_noise_range, self.clip_noise_range)
             action += noise
-            action = torch.clip(action, -self.max_action, self.max_action)
 
             # noise = self.epsilon * torch.normal(mean=torch.tensor(0.0),std=torch.tensor(1.0))
             # noise = self.epsilon * torch.normal(mean=torch.tensor(0.0),std=torch.tensor(0.2))

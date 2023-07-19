@@ -17,7 +17,8 @@ class DiffDrive_Env(Env):
 
         # Set gym spaces
         self.action_space = spaces.Box(-1 * np.ones((2, )), np.ones((2, )), dtype=np.float32)
-        self.observation_space = spaces.Box(-float('inf') * np.ones((5, )), float('inf')*np.ones((5, )), dtype=np.float32)
+        # self.observation_space = spaces.Box(-float('inf') * np.ones((5, )), float('inf')*np.ones((5, )), dtype=np.float32)
+        self.observation_space = spaces.Box(-float('inf') * np.ones((2, )), float('inf')*np.ones((2, )), dtype=np.float32)
 
         self._step_duration = self.config['step_duration'] * (10 ** -9) # how long each individual action is taken for. (i.e. time btw observations). In seconds
         self.max_episode_length = self.config['max_episode_length'] # max num steps before terminating the episode
@@ -73,13 +74,15 @@ class DiffDrive_Env(Env):
             self.fig.canvas.draw()
             self.fig.canvas.flush_events()
 
+        d_vect = [observation[0] - self.target_x, observation[1] - self.target_y]
+        observation = np.array([np.arctan2(d_vect[1], d_vect[0]), np.clip(np.linalg.norm(d_vect), -1, 1)])
         return observation
 
     def step(self, action):
         """
         Inputs:
             if self.use_diff_drive_kinematics == False:
-                action : [linear_vel,  angular_velocity]
+                action : [linear_vel,  angular_velocity (in radians)]
             else:
                 action : [v_l (i.e. left wheel linear velocity),  v_r (i.e right wheel linear velocity)]
         """
@@ -143,6 +146,7 @@ class DiffDrive_Env(Env):
             # calculate orientation of the robot after the displacements
             delta_theta = self._step_duration * action[1]
             self.theta += delta_theta
+            self.theta = self.theta % np.pi
             # calculate position of the robot after the displacements
             delta_x = self._step_duration * action[0] * np.cos(self.theta)
             delta_y = self._step_duration * action[0] * np.sin(self.theta)
@@ -184,6 +188,9 @@ class DiffDrive_Env(Env):
         self.cur_iteration += 1
         self.render()
 
+        d_vect = [observation[0] - target_state[0], observation[1] - target_state[1]]
+        observation = np.array([np.arctan2(d_vect[1], d_vect[0]), np.clip(np.linalg.norm(d_vect), a_min=-1, a_max=1)])
+        print(f'obs: {observation[0]:.2f}, {observation[1]:.2f}, self.theta: {self.theta}')
         return observation, reward, done, info
 
     def render(self, mode="human"):
