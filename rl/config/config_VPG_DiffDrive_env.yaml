@@ -1,6 +1,9 @@
 verbose: True # Whether to print info.
 log_full_detail: False
 
+use_diff_drive_kinematics: False # If True env uses diff drive kinematics, else simplified version where agent can move freely will be used.
+l: 0.5  # distance between the centers of the two wheels. Only used when use_diff_drive_kinematics = True.
+
 # ========== HYPERPARAMTERS VPG: ============= 
 mode: "train" # ['train', 'test'] # TODO: set from config
 total_episodes: 2000 # total number of episodes to train

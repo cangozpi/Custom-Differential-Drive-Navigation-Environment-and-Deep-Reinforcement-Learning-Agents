@@ -52,8 +52,10 @@ def train_agent(env):
     concatenated_obs_dim = sum(env.observation_space.shape)
     if hasattr(env.action_space, 'n'):
         concatenated_action_dim = [env.action_space.n]
+        num_action_heads = len(concatenated_action_dim)
     else:
         concatenated_action_dim = env.action_space.nvec
+        num_action_heads = concatenated_action_dim[0]
 
     agent = DQN_Agent(concatenated_obs_dim, concatenated_action_dim, \
         env.config["hidden_dims"], float(env.config["lr"]), \
@@ -61,7 +63,6 @@ def train_agent(env):
                 env.config["tau"], env.config["target_update_frequency"], env.config["use_target_network"], \
                     logger=tb_summaryWriter, log_full_detail=env.config['log_full_detail'])
     agent.train_mode()
-    num_action_heads = concatenated_action_dim[0]
     replay_buffer = ReplayBuffer(env.config["replay_buffer_size"], concatenated_obs_dim, num_action_heads, env.config["batch_size"])
 
     obs = env.reset()

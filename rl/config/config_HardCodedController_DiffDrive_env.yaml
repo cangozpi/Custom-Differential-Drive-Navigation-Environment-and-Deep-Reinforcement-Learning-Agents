@@ -4,6 +4,9 @@ render_mode: ['draw_coordinates'] # specifies which sensory informations to visu
 step_duration: 1_000_000_000 # 50_000_000 # specifies the duration of each step() with respect to simulation time in nanoseconds (e.g. 1 second is 1_000_000_000).
 real_time: False # if True than simulation is run in real time
 
+use_diff_drive_kinematics: False # If True env uses diff drive kinematics, else simplified version where agent can move freely will be used.
+l: 0.5  # distance between the centers of the two wheels. Only used when use_diff_drive_kinematics = True.
+
 # ========== HYPERPARAMTERS DDPG: ============= 
 mode: "test" # ['train', 'test']
 random_agent: False # If True takes random actions. If False uses a hard coded naive controller as the agent

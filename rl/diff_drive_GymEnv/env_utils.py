@@ -16,11 +16,17 @@ def get_observation(agent_x, agent_y, agent_theta, target_x, target_y):
     observation = [agent_x, agent_y, agent_theta, target_x, target_y]
     return np.array(observation)
 
-def get_reward(observation, target):
-    # L2 distance cost reward
+def get_reward(observation, target, distance_threshold=0.1):
+    # Check for distance to target
     d = [observation[0] - target[0], observation[1] - target[1]]
-    l2_distance = np.linalg.norm(d)
-    return -l2_distance
+    l2_distance_to_target = np.linalg.norm(d)
+
+    # Check if robot is close to target within the threshold values
+    if l2_distance_to_target <= distance_threshold: # goal state is reached
+        return 100 # target reach bonus
+
+    # L2 distance cost reward
+    return -l2_distance_to_target
 
 def get_target_state(target_x, target_y):
     return np.array([target_x, target_y])
